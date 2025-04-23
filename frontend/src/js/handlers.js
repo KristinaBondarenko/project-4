@@ -1,49 +1,44 @@
 import {
     FORM,
-    STATE,
     FIRST_NAME_INPUT,
     SURNAME_INPUT,
     ADDRESS_INPUT,
     AGE_INPUT,
+    STATE,
+    TABLE_BODY,
 } from "./constants/global.js";
-import { resetForm } from "./helpers/reset-form.js";
-import { addStudent, updateStudentData } from "./api/api.js";
+import { loadJSON, deleteStudentAPI, updateStudentData } from "./api/api.js";
 
-/**
- *
- * Функция передачи данных при клике по строке таблицы в форму
- * @param {object} event - Объект события
- * @param {array} data - Массив данных
- */
-export const handleClickTableRow = (event, data) => {
-    STATE.tableRowCheckedId = event.currentTarget.id;
+TABLE_BODY.addEventListener("click", async (e) => {
+    const row = e.target.closest("tr");
+    if (!row) return;
 
-    const clickedStudentData = data.find(
-        (student) => student.id === STATE.tableRowCheckedId,
-    );
-    
-    if (clickedStudentData) {
-        STATE.clickedStudent = clickedStudentData;
-        FIRST_NAME_INPUT.value = clickedStudentData.firstName;
-        SURNAME_INPUT.value = clickedStudentData.surname;
-        ADDRESS_INPUT.value = clickedStudentData.address;
-        AGE_INPUT.value = clickedStudentData.age;
+    const studentId = row.dataset.id;
+
+    // Удаление
+    if (e.target.classList.contains("delete-btn")) {
+        try {
+            await deleteStudentAPI(studentId);
+            row.remove();
+        } catch (err) {
+            console.error("Не удалось удалить студента:", err);
+        }
+        return;
     }
-};
 
-/**
- * Обработчик события отправки формы
- */
-FORM.addEventListener("submit", (e) => {
-    e.preventDefault();
-    if (STATE.tableRowCheckedId) {
-        STATE.clickedStudent.firstName = FIRST_NAME_INPUT.value;
-        STATE.clickedStudent.surname = SURNAME_INPUT.value;
-        STATE.clickedStudent.address = ADDRESS_INPUT.value;
-        STATE.clickedStudent.age = AGE_INPUT.value;
-        updateStudentData(STATE.tableRowCheckedId, STATE.clickedStudent);
-        resetForm();
-    } else {
-        addStudent();
+    // Редактирование
+    if (e.target.classList.contains("edit-btn")) {
+        const response = await fetch(
+            `http://localhost:3000/students/${studentId}`,
+        );
+        const student = await response.json();
+
+        FIRST_NAME_INPUT.value = student.firstName;
+        SURNAME_INPUT.value = student.surname;
+        ADDRESS_INPUT.value = student.address;
+        AGE_INPUT.value = student.age;
+
+        STATE.editingStudentId = studentId;
+        FORM.querySelector("button").textContent = "Сохранить изменения";
     }
 });
